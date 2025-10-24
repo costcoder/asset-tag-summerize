@@ -1,9 +1,12 @@
 {
   "name": "@costcode/atsum",
-  "version": "1.0.3",
+  "version": "1.0.7",
+  "type": "module",
   "description": "Tool that summerize tags count for all assets in multiple AWS account.",
   "main": "main.js",
-  "bin": "./dist/main.js",
+  "bin": {
+    "atsum": "./dist/main.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "b": "tsc -b tsconfig.json --pretty false",
