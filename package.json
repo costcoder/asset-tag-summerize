@@ -1,6 +1,6 @@
 {
   "name": "@costcode/atsum",
-  "version": "1.1.1",
+  "version": "1.1.7",
   "description": "Tool that summerize tags count for all assets in multiple AWS account.",
   "main": "main.js",
   "bin": {
