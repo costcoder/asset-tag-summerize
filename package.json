@@ -1,0 +1,27 @@
+{
+  "name": "@costcoder/atsum",
+  "version": "1.0.0",
+  "description": "Tool that summerize tags count for all assets in multiple AWS account.",
+  "main": "main.js",
+  "bin": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "b": "tsc -b tsconfig.json --pretty false"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:costcoder/asset-tag-summerize.git"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "3.915.0",
+    "@aws-sdk/client-s3": "3.916.0",
+    "@aws-sdk/client-sts": "3.916.0",
+    "@aws-sdk/client-rds": "3.916.0",
+    "@aws-sdk/client-lambda": "3.916.0",
+    "@aws-sdk/client-dynamodb": "3.916.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.5.4",
+    "typescript": "5.9.3"
+  }
+}
