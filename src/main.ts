@@ -1,8 +1,8 @@
-import {processMain} from "./processMain";
-import {getCliArguments} from "./cli-args.helper";
-import {getAccessConfigurations} from "./config.helper";
-import {AccountServicesSummary, AwsTotalSummary, Summary} from "./interfaces";
-import {getAccountSummary} from "./assetFetcher";
+import {processMain} from "./processMain.js";
+import {getCliArguments} from "./cli-args.helper.js";
+import {getAccessConfigurations} from "./config.helper.js";
+import {AccountServicesSummary, AwsTotalSummary } from "./interfaces.js";
+import {getAccountSummary} from "./assetFetcher.js";
 
 async function main() {
     const cliArgs = getCliArguments();

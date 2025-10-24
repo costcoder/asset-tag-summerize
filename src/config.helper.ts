@@ -1,4 +1,4 @@
-import {Configuration} from "./interfaces";
+import {Configuration} from "./interfaces.js";
 import fs from 'fs/promises';
 import * as path from "node:path";
 import * as os from "node:os";

@@ -4,7 +4,7 @@ import {
     DescribeRegionsCommand,
     EC2Client
 } from "@aws-sdk/client-ec2";
-import {AccountServicesSummary, AwsAccountConfig, Configuration, Summary} from "./interfaces";
+import {AccountServicesSummary, AwsAccountConfig, Configuration, Summary} from "./interfaces.js";
 import {GetBucketLocationCommand, GetBucketTaggingCommand, ListBucketsCommand, S3Client, Tag} from "@aws-sdk/client-s3";
 import {GetCallerIdentityCommand, STSClient} from "@aws-sdk/client-sts";
 import {DescribeDBInstancesCommand, RDSClient} from "@aws-sdk/client-rds";

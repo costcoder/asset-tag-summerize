@@ -7,7 +7,8 @@
   "bin": "dist/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "b": "tsc -b tsconfig.json --pretty false"
+    "b": "tsc -b tsconfig.json --pretty false",
+    "rb": "tsc -b tsconfig.json --pretty false -f"
   },
   "repository": {
     "type": "git",
