@@ -1,8 +1,8 @@
-import {processMain} from "./processMain.js";
-import {getCliArguments} from "./cli-args.helper.js";
-import {getAccessConfigurations} from "./config.helper.js";
-import {AccountServicesSummary, AwsTotalSummary } from "./interfaces.js";
-import {getAccountSummary} from "./assetFetcher.js";
+import {processMain} from "./processMain";
+import {getCliArguments} from "./cli-args.helper";
+import {getAccessConfigurations} from "./config.helper";
+import {AccountServicesSummary, AwsTotalSummary} from "./interfaces";
+import {getAccountSummary} from "./assetFetcher";
 
 async function main() {
     const cliArgs = getCliArguments();
@@ -16,11 +16,20 @@ async function main() {
     };
 
     for (const credential of credentials) {
-        const summary: AccountServicesSummary = await getAccountSummary(credential);
-        aggregatedSummary.totalAssets += summary.totalAssets;
-        aggregatedSummary.totalTaggedAssets += summary.totalTaggedAssets;
-        aggregatedSummary.totalUntaggedAssets += summary.totalUntaggedAssets;
-        aggregatedSummary.accountSummary[summary.accountId] = summary;
+        try {
+            const summary: AccountServicesSummary = await getAccountSummary(credential);
+            aggregatedSummary.totalAssets += summary.totalAssets;
+            aggregatedSummary.totalTaggedAssets += summary.totalTaggedAssets;
+            aggregatedSummary.totalUntaggedAssets += summary.totalUntaggedAssets;
+            aggregatedSummary.accountSummary[summary.accountId] = summary;
+        } catch (error) {
+            if (error.name == "UnauthorizedOperation") {
+                console.log(error.message);
+                console.log(`Skipping account: ${credential.accessKeyId}`);
+            } else {
+                throw error;
+            }
+        }
     }
 
     console.log('Summary');

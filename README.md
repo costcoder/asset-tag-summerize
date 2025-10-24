@@ -74,3 +74,7 @@ AWS_SECRET_ACCESS_KEY=
    }
  }
 ```
+## Troubleshooting
+If you get error during running, mostly the reason is that you don't have permissions to read the resources.  
+i.e. ```is not authorized to perform: lambda:ListTags on resource: arn:aws:lambda:us-east-1:```  
+Make sure the set the required permission for all resources of that type (Lambda) 

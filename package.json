@@ -1,7 +1,6 @@
 {
   "name": "@costcode/atsum",
-  "version": "1.0.7",
-  "type": "module",
+  "version": "1.1.1",
   "description": "Tool that summerize tags count for all assets in multiple AWS account.",
   "main": "main.js",
   "bin": {
@@ -10,6 +9,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "b": "tsc -b tsconfig.json --pretty false",
+    "build": "tsc -b tsconfig.json --pretty false",
+    "postbuild": "node -e \"const fs = require('fs'); const file = './dist/main.js'; const content = fs.readFileSync(file, 'utf8'); fs.writeFileSync(file, '#!/usr/bin/env node\\n' + content);\"",
     "rb": "tsc -b tsconfig.json --pretty false -f"
   },
   "repository": {

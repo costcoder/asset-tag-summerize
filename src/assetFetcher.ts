@@ -4,7 +4,7 @@ import {
     DescribeRegionsCommand,
     EC2Client
 } from "@aws-sdk/client-ec2";
-import {AccountServicesSummary, AwsAccountConfig, Configuration, Summary} from "./interfaces.js";
+import {AccountServicesSummary, AwsAccountConfig, Configuration, Summary} from "./interfaces";
 import {GetBucketLocationCommand, GetBucketTaggingCommand, ListBucketsCommand, S3Client, Tag} from "@aws-sdk/client-s3";
 import {GetCallerIdentityCommand, STSClient} from "@aws-sdk/client-sts";
 import {DescribeDBInstancesCommand, RDSClient} from "@aws-sdk/client-rds";
@@ -32,42 +32,86 @@ export async function getAccountSummary(credentials: Configuration): Promise<Acc
 
     const accountId = await getAccountId(account);
 
-    console.log('Reading DynamoDB...');
-    const dynamodbSummary: Summary = await getDynamoDBSummary(account, regions, accountId);
-    accountServicesSummary.totalAssets += dynamodbSummary.count;
-    accountServicesSummary.totalTaggedAssets += dynamodbSummary.taggedAssets;
-    accountServicesSummary.totalUntaggedAssets += dynamodbSummary.untaggedAssets;
-    accountServicesSummary.servicesSummary['dynamodb'] = dynamodbSummary;
+    try {
+        console.log('Reading DynamoDB...');
+        const dynamodbSummary: Summary = await getDynamoDBSummary(account, regions, accountId);
+        accountServicesSummary.totalAssets += dynamodbSummary.count;
+        accountServicesSummary.totalTaggedAssets += dynamodbSummary.taggedAssets;
+        accountServicesSummary.totalUntaggedAssets += dynamodbSummary.untaggedAssets;
+        accountServicesSummary.servicesSummary['dynamodb'] = dynamodbSummary;
+    } catch (e) {
+        if (e.name == "AccessDeniedException") {
+            console.log(e.message);
+            console.log('Skipping DynamoDB');
+        } else {
+            throw e;
+        }
+    }
 
-    console.log('Reading Lambda...');
-    const lambdaSummary: Summary = await getLambdaSummary(account, regions, accountId);
-    accountServicesSummary.totalAssets += lambdaSummary.count;
-    accountServicesSummary.totalTaggedAssets += lambdaSummary.taggedAssets;
-    accountServicesSummary.totalUntaggedAssets += lambdaSummary.untaggedAssets;
-    accountServicesSummary.servicesSummary['lambda'] = lambdaSummary;
+    try {
+        console.log('Reading Lambda...');
+        const lambdaSummary: Summary = await getLambdaSummary(account, regions, accountId);
+        accountServicesSummary.totalAssets += lambdaSummary.count;
+        accountServicesSummary.totalTaggedAssets += lambdaSummary.taggedAssets;
+        accountServicesSummary.totalUntaggedAssets += lambdaSummary.untaggedAssets;
+        accountServicesSummary.servicesSummary['lambda'] = lambdaSummary;
+    } catch (e) {
+        if (e.name == "AccessDeniedException") {
+            console.log(e.message);
+            console.log('Skipping Lambda');
+        } else {
+            throw e;
+        }
+    }
 
-    console.log('Reading RDS...');
-    const rdsSummary: Summary = await getRdsSummary(account, regions);
-    accountServicesSummary.totalAssets += rdsSummary.count;
-    accountServicesSummary.totalTaggedAssets += rdsSummary.taggedAssets;
-    accountServicesSummary.totalUntaggedAssets += rdsSummary.untaggedAssets;
-    accountServicesSummary.servicesSummary['rds'] = rdsSummary;
+    try {
+        console.log('Reading RDS...');
+        const rdsSummary: Summary = await getRdsSummary(account, regions);
+        accountServicesSummary.totalAssets += rdsSummary.count;
+        accountServicesSummary.totalTaggedAssets += rdsSummary.taggedAssets;
+        accountServicesSummary.totalUntaggedAssets += rdsSummary.untaggedAssets;
+        accountServicesSummary.servicesSummary['rds'] = rdsSummary;
+    } catch (e) {
+        if (e.name == "AccessDenied") {
+            console.log(e.message);
+            console.log('Skipping RDS');
+        } else {
+            throw e;
+        }
+    }
 
-    console.log('Reading S3...');
-    const s3Summary: Summary = await getS3Summary(account);
+    try {
+        console.log('Reading S3...');
+        const s3Summary: Summary = await getS3Summary(account);
+        accountServicesSummary.totalAssets += s3Summary.count;
+        accountServicesSummary.totalTaggedAssets += s3Summary.taggedAssets;
+        accountServicesSummary.totalUntaggedAssets += s3Summary.untaggedAssets;
+        accountServicesSummary.accountId = accountId;
+        accountServicesSummary['s3'] = s3Summary;
+    } catch (e) {
+        if (e.name == "AccessDenied") {
+            console.log(e.message);
+            console.log('Skipping S3');
+        } else {
+            throw e;
+        }
+    }
 
-    accountServicesSummary.totalAssets += s3Summary.count;
-    accountServicesSummary.totalTaggedAssets += s3Summary.taggedAssets;
-    accountServicesSummary.totalUntaggedAssets += s3Summary.untaggedAssets;
-    accountServicesSummary.accountId = accountId;
-    accountServicesSummary['s3'] = s3Summary;
-
-    console.log('Reading EC2...');
-    const ec2Summary: Summary = await getEc2Summary(account, regions);
-    accountServicesSummary.totalAssets += ec2Summary.count;
-    accountServicesSummary.totalTaggedAssets += ec2Summary.taggedAssets;
-    accountServicesSummary.totalUntaggedAssets += ec2Summary.untaggedAssets;
-    accountServicesSummary.servicesSummary['ec2'] = ec2Summary;
+    try {
+        console.log('Reading EC2...');
+        const ec2Summary: Summary = await getEc2Summary(account, regions);
+        accountServicesSummary.totalAssets += ec2Summary.count;
+        accountServicesSummary.totalTaggedAssets += ec2Summary.taggedAssets;
+        accountServicesSummary.totalUntaggedAssets += ec2Summary.untaggedAssets;
+        accountServicesSummary.servicesSummary['ec2'] = ec2Summary;
+    } catch (e) {
+        if (e.name == "UnauthorizedOperation") {
+            console.log(e.message);
+            console.log('Skipping EC2');
+        } else {
+            throw e;
+        }
+    }
 
     return accountServicesSummary;
 }

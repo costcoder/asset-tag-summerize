@@ -1,5 +1,5 @@
 import process from "process";
-import {CliArg} from "./interfaces.js";
+import {CliArg} from "./interfaces";
 
 export function getCliArguments(): CliArg {
     const cliArgs : CliArg = {};
