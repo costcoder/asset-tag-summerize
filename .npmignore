@@ -1,0 +1,25 @@
+# Source files - only publish compiled dist/
+src/
+tsconfig.json
+*.tsbuildinfo
+
+# Development files
+.github/
+.git/
+.gitignore
+credentials
+scripts/
+
+# IDE
+.idea/
+.vscode/
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Logs and temp files
+*.log
+.env
+.env.*
+!.env.example

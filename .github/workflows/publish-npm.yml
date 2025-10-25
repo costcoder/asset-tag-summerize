@@ -1,0 +1,90 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version: "auto" = auto-detect from commits | "patch/minor/major" = manual override | "none" = no bump, use current package.json'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - none
+          - patch
+          - minor
+          - major
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push version bump commits and tags
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history and tags for version detection
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Auto-detect version bump type
+        id: auto-version
+        if: ${{ inputs.version_type == 'auto' }}
+        run: |
+          BUMP_TYPE=$(node ./scripts/determine-version-bump.js)
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Auto-detected version bump: $BUMP_TYPE"
+
+      - name: Determine final version bump
+        id: version-decision
+        run: |
+          if [ "${{ inputs.version_type }}" = "auto" ]; then
+            FINAL_BUMP="${{ steps.auto-version.outputs.bump_type }}"
+            echo "Using auto-detected: $FINAL_BUMP"
+          elif [ "${{ inputs.version_type }}" = "none" ]; then
+            FINAL_BUMP="none"
+            echo "No version bump - using current package.json version"
+          else
+            FINAL_BUMP="${{ inputs.version_type }}"
+            echo "Using manual override: $FINAL_BUMP"
+          fi
+          echo "bump_type=$FINAL_BUMP" >> $GITHUB_OUTPUT
+
+      - name: Build package
+        run: npm run build
+
+      - name: Bump version
+        if: ${{ steps.version-decision.outputs.bump_type != 'none' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version ${{ steps.version-decision.outputs.bump_type }} -m "Bump version to %s [skip ci]"
+          git push
+          git push --tags
+
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_READ_WRITE }}
+
+      - name: Get package version
+        id: package-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create Release Summary
+        run: |
+          echo "### :rocket: Published to NPM" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** @costcode/atsum" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.package-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Bump:** ${{ steps.version-decision.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** https://www.npmjs.com/package/@costcode/atsum" >> $GITHUB_STEP_SUMMARY
