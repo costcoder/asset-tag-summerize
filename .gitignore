@@ -1,3 +1,11 @@
+# Test files
+test-credentials
+test-with-moto.sh
+
+# Scan output files
+scan-results-*.json
+scan-errors-*.log
+
 # Logs
 logs
 *.log
