@@ -1,10 +1,10 @@
-# Asset Tag Summerize
-Tool that scans multiple AWS accounts, summarizes asset counts per service, reports how many tags each service has, and provides an overall breakdown of total assets, tagged assets, and untagged assets.
+# Assets Scanner
+Tool that scans multiple AWS accounts, summarizes asset counts per service, and provides an overall breakdown of total assets, tagged assets, and untagged assets.
 
 If you find this package useful hit the star with <3
 
 ## Installation
-```npm install -g @costcoder/atsum```
+```npm install -g @costcode/atsum```
 
 ## Usage
 Uses ~/.aws/credentials file or other configuration file that passed through command line --config-file.  
