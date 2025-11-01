@@ -71,7 +71,7 @@ export async function getAccountSummary(credentials: Configuration): Promise<Acc
     }, accountServicesSummary);
 
     await scanService('Lambda', async () => {
-        const summary = await getLambdaSummary(account, regions, accountId);
+        const summary = await getLambdaSummary(account, regions);
         updateSummary(accountServicesSummary, 'lambda', summary);
     }, accountServicesSummary);
 

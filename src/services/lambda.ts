@@ -1,7 +1,7 @@
 import { LambdaClient, ListFunctionsCommand, ListTagsCommand, ListTagsCommandOutput } from "@aws-sdk/client-lambda";
 import { AwsAccountConfig, Summary } from "../interfaces.js";
 
-export async function getLambdaSummary(account: AwsAccountConfig, regions: string[], accountId: string): Promise<Summary> {
+export async function getLambdaSummary(account: AwsAccountConfig, regions: string[]): Promise<Summary> {
     const lambdaSummary: Summary = {
         count: 0,
         taggedAssets: 0,
@@ -27,8 +27,7 @@ export async function getLambdaSummary(account: AwsAccountConfig, regions: strin
             }
 
             for (const lambda of res.Functions) {
-                const functionArn = getArn(accountId, region, `function:${lambda.FunctionName}`, 'lambda');
-                const tagRes: ListTagsCommandOutput = await client.send(new ListTagsCommand({Resource: functionArn}));
+                const tagRes: ListTagsCommandOutput = await client.send(new ListTagsCommand({Resource: lambda.FunctionArn}));
                 if (tagRes.Tags) {
                     lambdaSummary.taggedAssets++;
                 } else {

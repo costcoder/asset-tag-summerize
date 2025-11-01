@@ -7,6 +7,8 @@ If you find this package useful hit the star with <3
 ```npm install -g @costcode/atsum```
 
 ## Usage
+```atsum [--config-file <path to config file>]```
+
 Uses ~/.aws/credentials file or other configuration file that passed through command line --config-file.  
 
 Configuration file should be in the following format:
@@ -77,4 +79,52 @@ AWS_SECRET_ACCESS_KEY=
 ## Troubleshooting
 If you get error during running, mostly the reason is that you don't have permissions to read the resources.  
 i.e. ```is not authorized to perform: lambda:ListTags on resource: arn:aws:lambda:us-east-1:```  
-Make sure the set the required permission for all resources of that type (Lambda) 
+Make sure the set the required permission for all resources of that type (Lambda)  
+You can set policy of read-only access for all resources (suggested),  
+or you can use this minimalistic policy:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Statement1",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeRegions",
+                "s3:ListAllMyBuckets",
+                "s3:GetBucketLocation",
+                "s3:GetBucketTagging",
+                "ec2:DescribeInstances",
+                "rds:DescribeDBInstances",
+                "lambda:ListFunctions",
+                "lambda:ListTags",
+                "dynamodb:ListTables",
+                "dynamodb:ListTagsOfResource",
+                "cloudfront:ListDistributions",
+                "route53:ListHostedZones",
+                "apigateway:GET",
+                "autoscaling:DescribeAutoScalingGroups",
+                "ecs:ListClusters",
+                "ecr:DescribeRepositories",
+                "elasticmapreduce:ListClusters",
+                "elasticache:DescribeCacheClusters",
+                "redshift:DescribeClusters",
+                "SNS:ListTopics",
+                "sqs:listqueues",
+                "states:ListStateMachines",
+                "codebuild:ListProjects",
+                "codedeploy:ListApplications",
+                "codepipeline:ListPipelines",
+                "logs:DescribeLogGroups",
+                "backup:ListBackupVaults",
+                "kms:ListKeys",
+                "acm:ListCertificates",
+                "workspaces:DescribeWorkspaces"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+```
