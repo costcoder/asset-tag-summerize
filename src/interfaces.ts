@@ -22,6 +22,13 @@ export interface Summary {
     untaggedAssets: number;
 }
 
+export interface ServiceError {
+    service: string;
+    error: string;
+    message: string;
+    timestamp: string;
+}
+
 export interface AccountServicesSummary {
     totalAssets: number;
     totalTaggedAssets: number;
@@ -29,7 +36,8 @@ export interface AccountServicesSummary {
     accountId: string;
     servicesSummary: {
         [service: string]: Summary;
-    }
+    };
+    errors?: ServiceError[];
 }
 
 export interface AwsTotalSummary {

@@ -1,20 +1,51 @@
-import {
-    DescribeInstancesCommand,
-    DescribeInstancesCommandOutput,
-    DescribeRegionsCommand,
-    EC2Client
-} from "@aws-sdk/client-ec2";
-import {AccountServicesSummary, AwsAccountConfig, Configuration, Summary} from "./interfaces";
-import {GetBucketLocationCommand, GetBucketTaggingCommand, ListBucketsCommand, S3Client, Tag} from "@aws-sdk/client-s3";
-import {GetCallerIdentityCommand, STSClient} from "@aws-sdk/client-sts";
-import {DescribeDBInstancesCommand, RDSClient} from "@aws-sdk/client-rds";
-import {LambdaClient, ListFunctionsCommand, ListTagsCommand, ListTagsCommandOutput} from "@aws-sdk/client-lambda";
-import {
-    DynamoDBClient,
-    ListTablesCommand,
-    ListTagsOfResourceCommand,
-    ListTagsOfResourceCommandOutput
-} from "@aws-sdk/client-dynamodb";
+import { DescribeRegionsCommand, EC2Client } from "@aws-sdk/client-ec2";
+import { AccountServicesSummary, AwsAccountConfig, Configuration, Summary, ServiceError } from "./interfaces.js";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+
+// Original services
+import { getEc2Summary } from "./services/ec2.js";
+import { getS3Summary } from "./services/s3.js";
+import { getRdsSummary } from "./services/rds.js";
+import { getLambdaSummary } from "./services/lambda.js";
+import { getDynamoDBSummary } from "./services/dynamodb.js";
+
+// Networking & Content Delivery
+import { getCloudFrontSummary } from "./services/cloudfront.js";
+import { getRoute53Summary } from "./services/route53.js";
+import { getApiGatewaySummary } from "./services/apigateway.js";
+
+// Compute & Containers
+import { getAutoScalingSummary } from "./services/autoscaling.js";
+import { getElasticBeanstalkSummary } from "./services/elasticbeanstalk.js";
+import { getEcsSummary } from "./services/ecs.js";
+import { getEcrSummary } from "./services/ecr.js";
+import { getEmrSummary } from "./services/emr.js";
+
+// Storage & Databases
+import { getElastiCacheSummary } from "./services/elasticache.js";
+import { getRedshiftSummary } from "./services/redshift.js";
+
+// Application Integration
+import { getSnsSummary } from "./services/sns.js";
+import { getSqsSummary } from "./services/sqs.js";
+import { getStepFunctionsSummary } from "./services/stepfunctions.js";
+
+// Developer Tools
+import { getCodeBuildSummary } from "./services/codebuild.js";
+import { getCodeDeploySummary } from "./services/codedeploy.js";
+import { getCodePipelineSummary } from "./services/codepipeline.js";
+
+// Management & Governance
+import { getCloudWatchLogsSummary } from "./services/cloudwatchlogs.js";
+import { getCloudTrailSummary } from "./services/cloudtrail.js";
+import { getBackupSummary } from "./services/backup.js";
+
+// Security & Identity
+import { getKmsSummary } from "./services/kms.js";
+import { getAcmSummary } from "./services/acm.js";
+
+// End User Computing
+import { getWorkSpacesSummary } from "./services/workspaces.js";
 
 export async function getAccountSummary(credentials: Configuration): Promise<AccountServicesSummary> {
     const accountServicesSummary: AccountServicesSummary = {
@@ -23,97 +54,205 @@ export async function getAccountSummary(credentials: Configuration): Promise<Acc
         totalUntaggedAssets: 0,
         accountId: '',
         servicesSummary: {},
+        errors: [],
     }
     const account: AwsAccountConfig = {
         credentials,
     };
 
     const regions = await getRegions(account);
-
     const accountId = await getAccountId(account);
+    accountServicesSummary.accountId = accountId;
 
-    try {
-        console.log('Reading DynamoDB...');
-        const dynamodbSummary: Summary = await getDynamoDBSummary(account, regions, accountId);
-        accountServicesSummary.totalAssets += dynamodbSummary.count;
-        accountServicesSummary.totalTaggedAssets += dynamodbSummary.taggedAssets;
-        accountServicesSummary.totalUntaggedAssets += dynamodbSummary.untaggedAssets;
-        accountServicesSummary.servicesSummary['dynamodb'] = dynamodbSummary;
-    } catch (e) {
-        if (e.name == "AccessDeniedException") {
-            console.log(e.message);
-            console.log('Skipping DynamoDB');
-        } else {
-            throw e;
-        }
-    }
+    // Original Services
+    await scanService('DynamoDB', async () => {
+        const summary = await getDynamoDBSummary(account, regions, accountId);
+        updateSummary(accountServicesSummary, 'dynamodb', summary);
+    }, accountServicesSummary);
 
-    try {
-        console.log('Reading Lambda...');
-        const lambdaSummary: Summary = await getLambdaSummary(account, regions, accountId);
-        accountServicesSummary.totalAssets += lambdaSummary.count;
-        accountServicesSummary.totalTaggedAssets += lambdaSummary.taggedAssets;
-        accountServicesSummary.totalUntaggedAssets += lambdaSummary.untaggedAssets;
-        accountServicesSummary.servicesSummary['lambda'] = lambdaSummary;
-    } catch (e) {
-        if (e.name == "AccessDeniedException") {
-            console.log(e.message);
-            console.log('Skipping Lambda');
-        } else {
-            throw e;
-        }
-    }
+    await scanService('Lambda', async () => {
+        const summary = await getLambdaSummary(account, regions);
+        updateSummary(accountServicesSummary, 'lambda', summary);
+    }, accountServicesSummary);
 
-    try {
-        console.log('Reading RDS...');
-        const rdsSummary: Summary = await getRdsSummary(account, regions);
-        accountServicesSummary.totalAssets += rdsSummary.count;
-        accountServicesSummary.totalTaggedAssets += rdsSummary.taggedAssets;
-        accountServicesSummary.totalUntaggedAssets += rdsSummary.untaggedAssets;
-        accountServicesSummary.servicesSummary['rds'] = rdsSummary;
-    } catch (e) {
-        if (e.name == "AccessDenied") {
-            console.log(e.message);
-            console.log('Skipping RDS');
-        } else {
-            throw e;
-        }
-    }
+    await scanService('RDS', async () => {
+        const summary = await getRdsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'rds', summary);
+    }, accountServicesSummary);
 
-    try {
-        console.log('Reading S3...');
-        const s3Summary: Summary = await getS3Summary(account);
-        accountServicesSummary.totalAssets += s3Summary.count;
-        accountServicesSummary.totalTaggedAssets += s3Summary.taggedAssets;
-        accountServicesSummary.totalUntaggedAssets += s3Summary.untaggedAssets;
-        accountServicesSummary.accountId = accountId;
-        accountServicesSummary['s3'] = s3Summary;
-    } catch (e) {
-        if (e.name == "AccessDenied") {
-            console.log(e.message);
-            console.log('Skipping S3');
-        } else {
-            throw e;
-        }
-    }
+    await scanService('S3', async () => {
+        const summary = await getS3Summary(account);
+        updateSummary(accountServicesSummary, 's3', summary);
+    }, accountServicesSummary);
 
-    try {
-        console.log('Reading EC2...');
-        const ec2Summary: Summary = await getEc2Summary(account, regions);
-        accountServicesSummary.totalAssets += ec2Summary.count;
-        accountServicesSummary.totalTaggedAssets += ec2Summary.taggedAssets;
-        accountServicesSummary.totalUntaggedAssets += ec2Summary.untaggedAssets;
-        accountServicesSummary.servicesSummary['ec2'] = ec2Summary;
-    } catch (e) {
-        if (e.name == "UnauthorizedOperation") {
-            console.log(e.message);
-            console.log('Skipping EC2');
-        } else {
-            throw e;
-        }
-    }
+    await scanService('EC2', async () => {
+        const summary = await getEc2Summary(account, regions);
+        updateSummary(accountServicesSummary, 'ec2', summary);
+    }, accountServicesSummary);
+
+    // Networking & Content Delivery
+    await scanService('CloudFront', async () => {
+        const summary = await getCloudFrontSummary(account);
+        updateSummary(accountServicesSummary, 'cloudfront', summary);
+    }, accountServicesSummary);
+
+    await scanService('Route53', async () => {
+        const summary = await getRoute53Summary(account);
+        updateSummary(accountServicesSummary, 'route53', summary);
+    }, accountServicesSummary);
+
+    await scanService('API Gateway', async () => {
+        const summary = await getApiGatewaySummary(account, regions);
+        updateSummary(accountServicesSummary, 'apigateway', summary);
+    }, accountServicesSummary);
+
+    // Compute & Containers
+    await scanService('Auto Scaling', async () => {
+        const summary = await getAutoScalingSummary(account, regions);
+        updateSummary(accountServicesSummary, 'autoscaling', summary);
+    }, accountServicesSummary);
+
+    await scanService('Elastic Beanstalk', async () => {
+        const summary = await getElasticBeanstalkSummary(account, regions);
+        updateSummary(accountServicesSummary, 'elasticbeanstalk', summary);
+    }, accountServicesSummary);
+
+    await scanService('ECS', async () => {
+        const summary = await getEcsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'ecs', summary);
+    }, accountServicesSummary);
+
+    await scanService('ECR', async () => {
+        const summary = await getEcrSummary(account, regions);
+        updateSummary(accountServicesSummary, 'ecr', summary);
+    }, accountServicesSummary);
+
+    await scanService('EMR', async () => {
+        const summary = await getEmrSummary(account, regions);
+        updateSummary(accountServicesSummary, 'emr', summary);
+    }, accountServicesSummary);
+
+    // Storage & Databases
+    await scanService('ElastiCache', async () => {
+        const summary = await getElastiCacheSummary(account, regions, accountId);
+        updateSummary(accountServicesSummary, 'elasticache', summary);
+    }, accountServicesSummary);
+
+    await scanService('Redshift', async () => {
+        const summary = await getRedshiftSummary(account, regions);
+        updateSummary(accountServicesSummary, 'redshift', summary);
+    }, accountServicesSummary);
+
+    // Application Integration
+    await scanService('SNS', async () => {
+        const summary = await getSnsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'sns', summary);
+    }, accountServicesSummary);
+
+    await scanService('SQS', async () => {
+        const summary = await getSqsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'sqs', summary);
+    }, accountServicesSummary);
+
+    await scanService('Step Functions', async () => {
+        const summary = await getStepFunctionsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'stepfunctions', summary);
+    }, accountServicesSummary);
+
+    // Developer Tools
+    await scanService('CodeBuild', async () => {
+        const summary = await getCodeBuildSummary(account, regions);
+        updateSummary(accountServicesSummary, 'codebuild', summary);
+    }, accountServicesSummary);
+
+    await scanService('CodeDeploy', async () => {
+        const summary = await getCodeDeploySummary(account, regions, accountId);
+        updateSummary(accountServicesSummary, 'codedeploy', summary);
+    }, accountServicesSummary);
+
+    await scanService('CodePipeline', async () => {
+        const summary = await getCodePipelineSummary(account, regions, accountId);
+        updateSummary(accountServicesSummary, 'codepipeline', summary);
+    }, accountServicesSummary);
+
+    // Management & Governance
+    await scanService('CloudWatch Logs', async () => {
+        const summary = await getCloudWatchLogsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'cloudwatchlogs', summary);
+    }, accountServicesSummary);
+
+    await scanService('CloudTrail', async () => {
+        const summary = await getCloudTrailSummary(account);
+        updateSummary(accountServicesSummary, 'cloudtrail', summary);
+    }, accountServicesSummary);
+
+    await scanService('Backup', async () => {
+        const summary = await getBackupSummary(account, regions);
+        updateSummary(accountServicesSummary, 'backup', summary);
+    }, accountServicesSummary);
+
+    // Security & Identity
+    await scanService('KMS', async () => {
+        const summary = await getKmsSummary(account, regions);
+        updateSummary(accountServicesSummary, 'kms', summary);
+    }, accountServicesSummary);
+
+    await scanService('ACM', async () => {
+        const summary = await getAcmSummary(account, regions);
+        updateSummary(accountServicesSummary, 'acm', summary);
+    }, accountServicesSummary);
+
+    // End User Computing
+    await scanService('WorkSpaces', async () => {
+        const summary = await getWorkSpacesSummary(account, regions);
+        updateSummary(accountServicesSummary, 'workspaces', summary);
+    }, accountServicesSummary);
 
     return accountServicesSummary;
+}
+
+// Helper function to scan a service with error handling
+async function scanService(
+    serviceName: string,
+    scanFn: () => Promise<void>,
+    accountSummary: AccountServicesSummary,
+    allowedErrors: string[] = []
+): Promise<void> {
+    try {
+        console.log(`Reading ${serviceName}...`);
+        await scanFn();
+        console.log(`✓ ${serviceName} scanned successfully`);
+    } catch (e) {
+        const errorMessage = e.message || 'Unknown error';
+        const errorName = e.name || 'Error';
+
+        // Log error to console
+        console.error(`✗ ${serviceName} failed: ${errorMessage}`);
+
+        // Track error in results
+        const serviceError: ServiceError = {
+            service: serviceName,
+            error: errorName,
+            message: errorMessage,
+            timestamp: new Date().toISOString(),
+        };
+
+        accountSummary.errors.push(serviceError);
+
+        // Continue execution - don't throw
+    }
+}
+
+// Helper function to update account summary
+function updateSummary(
+    accountSummary: AccountServicesSummary,
+    serviceKey: string,
+    serviceSummary: Summary
+): void {
+    accountSummary.totalAssets += serviceSummary.count;
+    accountSummary.totalTaggedAssets += serviceSummary.taggedAssets;
+    accountSummary.totalUntaggedAssets += serviceSummary.untaggedAssets;
+    accountSummary.servicesSummary[serviceKey] = serviceSummary;
 }
 
 async function getAccountId(account: AwsAccountConfig): Promise<string> {
@@ -127,189 +266,4 @@ async function getRegions(account: AwsAccountConfig): Promise<string[]> {
     const command = new DescribeRegionsCommand();
     const response = await client.send(command);
     return response.Regions.map(region => region.RegionName);
-}
-
-async function getS3Summary(account: AwsAccountConfig): Promise<Summary> {
-    const s3Summary: Summary = {
-        count: 0,
-        taggedAssets: 0,
-        untaggedAssets: 0,
-    };
-
-    const s3Client = new S3Client(account);
-    let nextToken: string | undefined;
-    do {
-        const command = new ListBucketsCommand({ContinuationToken: nextToken});
-        const response = await s3Client.send(command);
-
-        const {Buckets, ContinuationToken} = response;
-        nextToken = ContinuationToken;
-        for (const bucket of Buckets) {
-            s3Summary.count++;
-            const locationCommand = new GetBucketLocationCommand({Bucket: bucket.Name});
-            const {LocationConstraint} = await s3Client.send(locationCommand);
-
-            const bucketRegion = LocationConstraint || 'us-east-1';
-            const bucketRegionClient = new S3Client({credentials: account.credentials, region: bucketRegion});
-            const tagSet = await getS3Tags(bucketRegionClient, bucket.Name);
-            if (tagSet.length > 0) {
-                s3Summary.taggedAssets++;
-            } else {
-                s3Summary.untaggedAssets++;
-            }
-        }
-    } while (nextToken);
-
-    return s3Summary;
-}
-
-async function getS3Tags(client: S3Client, bucketName: string): Promise<Tag[]> {
-    const NO_TAGS_ERROR = 'NoSuchTagSet';
-
-    try {
-        const {TagSet} = await client.send(new GetBucketTaggingCommand({Bucket: bucketName}));
-        return TagSet;
-    } catch (err) {
-        if (err.name !== NO_TAGS_ERROR) {
-            throw new Error(`Failed to get tags for bucket:${bucketName}, ${err}`);
-        } else {
-            return [];
-        }
-    }
-}
-
-async function getEc2Summary(account: AwsAccountConfig, regions: string[]): Promise<Summary> {
-    const ec2Summary: Summary = {
-        count: 0,
-        taggedAssets: 0,
-        untaggedAssets: 0,
-    };
-
-    for (const region of regions) {
-        account.region = region;
-        let nextToken: string | undefined;
-        do {
-            const client = new EC2Client(account);
-            const command = new DescribeInstancesCommand({NextToken: nextToken});
-            const res: DescribeInstancesCommandOutput = await client.send(command);
-            nextToken = res.NextToken;
-            for (const instance of res.Reservations.flatMap(reservation => reservation.Instances)) {
-                ec2Summary.count++;
-                if (instance.Tags) {
-                    ec2Summary.taggedAssets++;
-                } else {
-                    ec2Summary.untaggedAssets++;
-                }
-            }
-        } while (nextToken);
-    }
-
-    return ec2Summary;
-}
-
-async function getRdsSummary(account: AwsAccountConfig, regions: string[]): Promise<Summary> {
-    const rdsSummary: Summary = {
-        count: 0,
-        taggedAssets: 0,
-        untaggedAssets: 0,
-    };
-
-    for (const region of regions) {
-        account.region = region;
-        let nextToken: string | undefined;
-        do {
-            const client = new RDSClient(account);
-            const command = new DescribeDBInstancesCommand({Marker: nextToken});
-            const res = await client.send(command);
-            nextToken = res.Marker;
-            for (const instance of res.DBInstances) {
-                rdsSummary.count++;
-                if (instance.TagList.length > 0) {
-                    rdsSummary.taggedAssets++;
-                } else {
-                    rdsSummary.untaggedAssets++;
-                }
-            }
-        } while (nextToken);
-    }
-
-    return rdsSummary;
-}
-
-async function getLambdaSummary(account: AwsAccountConfig, regions: string[], accountId: string): Promise<Summary> {
-    const lambdaSummary: Summary = {
-        count: 0,
-        taggedAssets: 0,
-        untaggedAssets: 0,
-    };
-    for (const region of regions) {
-        account.region = region;
-        let nextToken: string | undefined;
-
-        do {
-            const client = new LambdaClient(account);
-
-            const res = await client.send(
-                new ListFunctionsCommand({
-                    Marker: nextToken,
-                })
-            );
-
-            if (!res.Functions) {
-                continue
-            } else {
-                lambdaSummary.count += res.Functions.length;
-            }
-
-            for (const lambda of res.Functions) {
-                const functionArn = getArn(accountId, region, `function:${lambda.FunctionName}`, 'lambda');
-                const tagRes: ListTagsCommandOutput = await client.send(new ListTagsCommand({Resource: functionArn}));
-                if (tagRes.Tags) {
-                    lambdaSummary.taggedAssets++;
-                } else {
-                    lambdaSummary.untaggedAssets++;
-                }
-            }
-        } while (nextToken);
-    }
-    return lambdaSummary;
-}
-
-async function getDynamoDBSummary(account: AwsAccountConfig, regions: string[], accountId: string): Promise<Summary> {
-    const dynamodbSummary: Summary = {
-        count: 0,
-        taggedAssets: 0,
-        untaggedAssets: 0,
-    };
-
-    for (const region of regions) {
-        account.region = region;
-        let nextToken: string | undefined;
-        do {
-            const client = new DynamoDBClient(account);
-            const command = new ListTablesCommand({ExclusiveStartTableName: nextToken,});
-            const res = await client.send(command);
-
-            if (!res.TableNames) {
-                continue;
-            }
-
-            dynamodbSummary.count += res.TableNames.length;
-            for (const tableName of res.TableNames) {
-                const tableArn = getArn(accountId, region, `table/${tableName}`, 'dynamodb');
-                const tagRes: ListTagsOfResourceCommandOutput = await client.send(new ListTagsOfResourceCommand({ResourceArn: tableArn}));
-                if (tagRes.Tags) {
-                    dynamodbSummary.taggedAssets++;
-                } else {
-                    dynamodbSummary.untaggedAssets++;
-                }
-            }
-        } while (nextToken);
-    }
-
-    return dynamodbSummary;
-}
-
-export function getArn(accountId: string, region: string, resourceIdentifier: string, service: string): string {
-    return `arn:aws:${service}:${region}:${accountId}:${resourceIdentifier}`;
 }
